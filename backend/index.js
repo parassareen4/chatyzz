@@ -15,34 +15,25 @@ import router from './routes/authRoutes.js';
 const app = express();
 
 app.use(express.json());
-app.use(cors());
+app.use(cors('*'));
 
 
 
 app.use(
     session({
-      secret: process.env.SECRET_KEY,
+      secret: process.env.JWT_SECRET,
       resave: false,
       saveUninitialized: false,
     })
   );
-
+  
   app.use(passport.initialize());
   app.use(passport.session());
-
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => {
-  console.log('Connected to MongoDB');
-});
-
-app.use('/auth', router);
-
-app.get('/', (req, res) => {
-  res.send('Hello World!');
-});
-
-app.listen(3000, () => {
-  console.log(`Server is running on port 3000`);
-});
+  
+  mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+    .then(() => console.log("MongoDB connected"))
+    .catch(err => console.log(err));
+  
+  app.use("/auth", router);
+  
+  app.listen(5000, () => console.log("Server running on port 5000"));
