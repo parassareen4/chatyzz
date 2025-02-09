@@ -1,5 +1,6 @@
 import express from "express";
 import bcrypt from "bcryptjs";
+import passport from "passport";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
@@ -43,5 +44,29 @@ router.post("/login", async (req, res) => {
         res.status(500).json({ message: "Error logging in" });
     }
 })
+
+// Google OAuth Route
+router.get(
+    "/google",
+    passport.authenticate("google", { scope: ["profile", "email"] })
+  );
+  
+  // Google OAuth Callback
+  router.get(
+    "/google/callback",
+    passport.authenticate("google", { failureRedirect: "/" }),
+    (req, res) => {
+      res.redirect("http://localhost:3000/dashboard"); // Redirect to frontend after login
+    }
+  );
+  
+  // Logout Route
+  router.get("/logout", (req, res) => {
+    req.logout(() => {
+      res.redirect("/");
+    });
+  });
+  
+
 
 export default router;
