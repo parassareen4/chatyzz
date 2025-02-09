@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 function Dashboard() {
   const [user, setUser] = useState(null);
@@ -46,6 +47,12 @@ function Dashboard() {
   return (
     <div style={{ textAlign: "center", marginTop: "50px" }}>
       <h1>Dashboard</h1>
+      <div style={{ textAlign: "center", marginTop: "50px" }}>
+      <h1>Welcome to Chatyzz</h1>
+      <Link to="/videocall">
+        <button>Start Video Call</button>
+      </Link>
+    </div>
       {user ? (
         <div>
           <h2>Welcome, {user.name}</h2>
