@@ -26,7 +26,7 @@ function Dashboard() {
       }
 
       try {
-        const res = await axios.get("http://localhost:5000/auth/me", {
+        const res = await axios.get("https://chatyzz.onrender.com/auth/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUser(res.data);

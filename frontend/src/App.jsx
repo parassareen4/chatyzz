@@ -8,7 +8,7 @@ function App() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post("http://localhost:5000/auth/login", { email, password });
+      const res = await axios.post("https://chatyzz.onrender.com/auth/login", { email, password });
       localStorage.setItem("token", res.data.token);
       window.location.href = "/dashboard";
     } catch (err) {
@@ -24,7 +24,7 @@ function App() {
         <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
         <button type="submit">Login</button>
       </form>
-      <a href="http://localhost:5000/auth/google"><button>Login with Google</button></a>
+      <a href="https://chatyzz.onrender.com/auth/google"><button>Login with Google</button></a>
     </div>
   );
 }
