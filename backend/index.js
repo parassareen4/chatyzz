@@ -44,17 +44,29 @@ app.use(
   
   app.use("/auth", router);
 
-  io.on('connection', (socket) => {
-    console.log('a user connected', socket.id);
-    socket.on('join-room',(roomId,userId)=>{
-        socket.join(roomId);
-        socket.broadcast.to(roomId).emit("user-connected",userId)
-
-        socket.on('disconnect',()=>{
-            socket.broadcast.to(roomId).emit("user-disconnected",userId)
-        })
-    })
-    
+  io.on("connection", (socket) => {
+    console.log("User connected:", socket.id);
+  
+    socket.on("join-room", (roomId, userId) => {
+      socket.join(roomId);
+      socket.broadcast.to(roomId).emit("user-connected", userId);
+  
+      socket.on("disconnect", () => {
+        socket.broadcast.to(roomId).emit("user-disconnected", userId);
+      });
+    });
+  
+    socket.on("offer", (data) => {
+      socket.broadcast.to(data.room).emit("offer", data);
+    });
+  
+    socket.on("answer", (data) => {
+      socket.broadcast.to(data.room).emit("answer", data);
+    });
+  
+    socket.on("ice-candidate", (data) => {
+      socket.broadcast.to(data.room).emit("ice-candidate", data);
+    });
   });
 
   

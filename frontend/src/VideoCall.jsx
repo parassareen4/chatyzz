@@ -1,73 +1,74 @@
 import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
-import Peer from "simple-peer";
 
 const socket = io("https://chatyzz.onrender.com");
 
-function VideoCall() {
-  const [stream, setStream] = useState(null);
-  const [peers, setPeers] = useState([]);
-  const userVideo = useRef();
-  const peersRef = useRef([]);
-
-  useEffect(() => {
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((mediaStream) => {
-      setStream(mediaStream);
-      if (userVideo.current) {
-        userVideo.current.srcObject = mediaStream;
-      }
-      console.log(stream)
-
-      socket.emit("join-room", "chatyzz-room", socket.id);
-
-      socket.on("user-connected", (userId) => {
-        const peer = createPeer(userId, socket.id, mediaStream);
-        peersRef.current.push({ peerID: userId, peer });
-        setPeers((users) => [...users, peer]);
+const VideoCall = () => {
+    const [peerId, setPeerId] = useState(null);
+    const localVideoRef = useRef(null);
+    const remoteVideoRef = useRef(null);
+    const peerConnection = useRef(null);
+    const roomId = "chatyzz-room"; // Hardcoded for testing
+  
+    useEffect(() => {
+      socket.emit("join-room", roomId, socket.id);
+      setPeerId(socket.id);
+  
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+        .then((stream) => {
+          localVideoRef.current.srcObject = stream;
+          peerConnection.current = new RTCPeerConnection({
+            iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+          });
+  
+          stream.getTracks().forEach((track) =>
+            peerConnection.current.addTrack(track, stream)
+          );
+  
+          peerConnection.current.onicecandidate = (event) => {
+            if (event.candidate) {
+              socket.emit("ice-candidate", { candidate: event.candidate, room: roomId });
+            }
+          };
+  
+          peerConnection.current.ontrack = (event) => {
+            remoteVideoRef.current.srcObject = event.streams[0];
+          };
+        });
+  
+      socket.on("user-connected", async (userId) => {
+        const offer = await peerConnection.current.createOffer();
+        await peerConnection.current.setLocalDescription(offer);
+        socket.emit("offer", { offer, room: roomId });
       });
-
-      socket.on("user-disconnected", (userId) => {
-        const peerObj = peersRef.current.find((p) => p.peerID === userId);
-        if (peerObj) peerObj.peer.destroy();
-        peersRef.current = peersRef.current.filter((p) => p.peerID !== userId);
-        setPeers((prevPeers) => prevPeers.filter((p) => p !== peerObj.peer));
+  
+      socket.on("offer", async ({ offer }) => {
+        await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await peerConnection.current.createAnswer();
+        await peerConnection.current.setLocalDescription(answer);
+        socket.emit("answer", { answer, room: roomId });
       });
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
-
-  function createPeer(userId, callerId, stream) {
-    const peer = new Peer({ initiator: true, trickle: false, stream });
-    peer.on("signal", (signal) => {
-      socket.emit("sending-signal", { userId, callerId, signal });
-    });
-    return peer;
-  }
-
-  return (
-    <div>
-      <h1>Chatyzz Video Call</h1>
-      <video ref={userVideo} autoPlay playsInline />
-      {peers.map((peer, index) => (
-        <Video key={index} peer={peer} />
-      ))}
-    </div>
-  );
-}
-
-function Video( peer ) {
-  const ref = useRef();
-
-  useEffect(() => {
-    peer.on("stream", (stream) => {
-      if (ref.current) ref.current.srcObject = stream;
-    });
-  }, [peer]);
-
-  return <video ref={ref} autoPlay playsInline />;
-}
-
-export default VideoCall;
+  
+      socket.on("answer", async ({ answer }) => {
+        await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
+      });
+  
+      socket.on("ice-candidate", ({ candidate }) => {
+        peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+      });
+  
+      return () => socket.disconnect();
+    }, []);
+  
+    return (
+      <div style={{ textAlign: "center" }}>
+        <h2>Chatyzz Video Call</h2>
+        <div>
+          <video ref={localVideoRef} autoPlay playsInline muted style={{ width: "300px" }} />
+          <video ref={remoteVideoRef} autoPlay playsInline style={{ width: "300px" }} />
+        </div>
+      </div>
+    );
+  };
+  
+  export default VideoCall;
