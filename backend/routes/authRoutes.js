@@ -59,7 +59,7 @@ router.post("/register", async (req, res) => {
         expiresIn: "1h",
       });
   
-      res.redirect(`http://localhost:5173/dashboard?token=${token}`);
+      res.redirect(`https://chatyzz.netlify.app/dashboard?token=${token}`);
     }
   );
   
