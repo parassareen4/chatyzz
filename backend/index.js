@@ -5,6 +5,8 @@ dotenv.config();
 import http from 'http';
 import { Server } from 'socket.io';
 
+import { ExpressPeerServer } from 'peer';
+
 import passport from 'passport';
 import  './config/passport.js';
 import session from 'express-session';
@@ -47,16 +49,16 @@ app.use(
   const rooms = {}
 
   io.on("connection", (socket) => {
-    console.log("A user connected:", socket.id);
+    console.log("User connected:", socket.id);
   
-    socket.on("join-room", ({ roomId, userName }) => {
+    socket.on("join-room", ({ roomId, userName, peerId }) => {
       if (!rooms[roomId]) rooms[roomId] = [];
-      rooms[roomId].push({ id: socket.id, userName });
+      rooms[roomId].push({ id: socket.id, userName, peerId });
   
       socket.join(roomId);
       io.to(roomId).emit("user-joined", rooms[roomId]);
   
-      console.log(`${userName} joined room: ${roomId}`);
+      console.log(`${userName} joined room: ${roomId} with PeerID: ${peerId}`);
     });
   
     socket.on("leave-room", ({ roomId }) => {
@@ -67,12 +69,12 @@ app.use(
     });
   
     socket.on("disconnect", () => {
-      for (const roomId in rooms) {
-        rooms[roomId] = rooms[roomId].filter((user) => user.id !== socket.id);
-        io.to(roomId).emit("user-left", rooms[roomId]);
-      }
-      console.log("A user disconnected:", socket.id);
+        for (const roomId in rooms) {
+          rooms[roomId] = rooms[roomId].filter((user) => user.id !== socket.id);
+          io.to(roomId).emit("user-left", rooms[roomId]);
+        }
+        console.log("User disconnected:", socket.id);
+      });
     });
-  });
   
   server.listen(5000, () => console.log("Server running on port 5000"));

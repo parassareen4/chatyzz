@@ -1,18 +1,29 @@
-import React, { useEffect, useState } from "react";
+import React, {useRef, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
-
+import Peer from "peerjs";
 const socket = io("https://chatyzz.onrender.com");
 
 function Room() {
   const { roomId } = useParams();
   const [users, setUsers] = useState([]);
   const navigate = useNavigate();
+  const [peerId, setPeerId] = useState("");
+  const localVideoRef = useRef();
+  const remoteVideoRef = useRef();
+  const peerInstance = useRef(null);
 
   useEffect(() => {
     const userName = prompt("Enter your name:");
+    const peer = new Peer(); // Initialize PeerJS
+    peerInstance.current = peer;
 
-    socket.emit("join-room", { roomId, userName });
+    peer.on("open", (id) => {
+      setPeerId(id);
+      socket.emit("join-room", { roomId, userName, peerId: id });
+    });
+
+    
 
     socket.on("user-joined", (users) => {
       setUsers(users);
@@ -21,6 +32,36 @@ function Room() {
     socket.on("user-left", (users) => {
       setUsers(users);
     });
+
+    navigator.mediaDevices
+      .getUserMedia({ video: true, audio: true })
+      .then((stream) => {
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+        }
+
+        socket.on("user-joined", (users) => {
+          users.forEach((user) => {
+            if (user.peerId !== peer.id) {
+              const call = peer.call(user.peerId, stream);
+              call.on("stream", (remoteStream) => {
+                if (remoteVideoRef.current) {
+                  remoteVideoRef.current.srcObject = remoteStream;
+                }
+              });
+            }
+          });
+        });
+
+        peer.on("call", (call) => {
+          call.answer(stream);
+          call.on("stream", (remoteStream) => {
+            if (remoteVideoRef.current) {
+              remoteVideoRef.current.srcObject = remoteStream;
+            }
+          });
+        });
+      });
 
     return () => {
       socket.emit("leave-room", { roomId });
