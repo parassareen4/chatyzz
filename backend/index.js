@@ -44,30 +44,35 @@ app.use(
   
   app.use("/auth", router);
 
+  const room = {}
+
   io.on("connection", (socket) => {
-    console.log("User connected:", socket.id);
+    console.log("A user connected:", socket.id);
   
-    socket.on("join-room", (roomId, userId) => {
+    socket.on("join-room", ({ roomId, userName }) => {
+      if (!rooms[roomId]) rooms[roomId] = [];
+      rooms[roomId].push({ id: socket.id, userName });
+  
       socket.join(roomId);
-      socket.broadcast.to(roomId).emit("user-connected", userId);
+      io.to(roomId).emit("user-joined", rooms[roomId]);
   
-      socket.on("disconnect", () => {
-        socket.broadcast.to(roomId).emit("user-disconnected", userId);
-      });
+      console.log(`${userName} joined room: ${roomId}`);
     });
   
-    socket.on("offer", (data) => {
-      socket.broadcast.to(data.room).emit("offer", data);
+    socket.on("leave-room", ({ roomId }) => {
+      rooms[roomId] = rooms[roomId].filter((user) => user.id !== socket.id);
+      socket.leave(roomId);
+      io.to(roomId).emit("user-left", rooms[roomId]);
+      console.log(`User left room: ${roomId}`);
     });
   
-    socket.on("answer", (data) => {
-      socket.broadcast.to(data.room).emit("answer", data);
-    });
-  
-    socket.on("ice-candidate", (data) => {
-      socket.broadcast.to(data.room).emit("ice-candidate", data);
+    socket.on("disconnect", () => {
+      for (const roomId in rooms) {
+        rooms[roomId] = rooms[roomId].filter((user) => user.id !== socket.id);
+        io.to(roomId).emit("user-left", rooms[roomId]);
+      }
+      console.log("A user disconnected:", socket.id);
     });
   });
-
   
   server.listen(5000, () => console.log("Server running on port 5000"));

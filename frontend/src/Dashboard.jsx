@@ -2,10 +2,22 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
+import { v4 as uuidV4 } from "uuid";
 
 function Dashboard() {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
+  const [roomId, setRoomId] = useState("");
+
+  const createRoom = () => {
+    const newRoomId = uuidV4();
+    navigate(`/room/${newRoomId}`);
+  };
+
+  const joinRoom = () => {
+    if (roomId) navigate(`/room/${roomId}`);
+  };
+
 
   useEffect(() => {
     // 1️⃣ Get token from URL if redirected from Google OAuth
@@ -51,7 +63,20 @@ function Dashboard() {
       <h1>Welcome to Chatyzz</h1>
       <Link to="/videocall">
         <button>Start Video Call</button>
+
       </Link>
+    </div>
+    <div style={{ textAlign: "center", marginTop: "50px" }}>
+      <h1>Welcome to Chatyzz</h1>
+      <button onClick={createRoom}>Create Room</button>
+      <br /><br />
+      <input
+        type="text"
+        placeholder="Enter Room ID"
+        value={roomId}
+        onChange={(e) => setRoomId(e.target.value)}
+      />
+      <button onClick={joinRoom}>Join Room</button>
     </div>
       {user ? (
         <div>
