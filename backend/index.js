@@ -44,7 +44,7 @@ app.use(
   
   app.use("/auth", router);
 
-  const room = {}
+  const rooms = {}
 
   io.on("connection", (socket) => {
     console.log("A user connected:", socket.id);
