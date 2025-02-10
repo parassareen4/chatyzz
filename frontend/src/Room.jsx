@@ -66,6 +66,7 @@ function Room() {
     return () => {
       socket.emit("leave-room", { roomId });
       socket.off();
+      peer.disconnect();
     };
   }, [roomId]);
 
@@ -78,6 +79,10 @@ function Room() {
           <li key={user.id}>{user.userName}</li>
         ))}
       </ul>
+      <div style={{ display: "flex", gap: "20px" }}>
+        <video ref={localVideoRef} autoPlay playsInline muted style={{ width: "300px", border: "2px solid green" }} />
+        <video ref={remoteVideoRef} autoPlay playsInline style={{ width: "300px", border: "2px solid red" }} />
+      </div>
       <button onClick={() => navigate("/")}>Leave Room</button>
     </div>
   );
