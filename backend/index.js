@@ -25,7 +25,7 @@ const io = new Server(server, {
 });
 
 app.use(express.json());
-app.use(cors({ origin: "*" })); // ✅ Fixed cors('*') issue
+app.use(cors('*')); // ✅ Fixed cors('*') issue
 
 app.use(
     session({
