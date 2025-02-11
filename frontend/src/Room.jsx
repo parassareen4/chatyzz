@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import Peer from "peerjs";
 
-
 const socket = io("https://chatyzz.onrender.com");
 
 function Room() {
@@ -13,11 +12,12 @@ function Room() {
   const [peerId, setPeerId] = useState("");
   const localVideoRef = useRef();
   const peerInstance = useRef(null);
-  const connectedPeers = useRef(new Set()); // Store connected peers to prevent duplicates
+  const localStreamRef = useRef(null);
+  const connectedPeers = useRef(new Set()); // Prevent duplicate connections
 
   const addVideoStream = (stream, peerId) => {
     let existingVideo = document.querySelector(`[data-peer-id="${peerId}"]`);
-    if (existingVideo) return; // Prevent duplicate video elements
+    if (existingVideo) return;
 
     let video = document.createElement("video");
     video.srcObject = stream;
@@ -38,23 +38,40 @@ function Room() {
     const peer = new Peer();
     peerInstance.current = peer;
 
-    peer.on("open", (id) => {
-      setPeerId(id);
-      socket.emit("join-room", { roomId, userName, peerId: id });
-    });
-
-    socket.on("user-joined", (users) => {
-      users.forEach((user) => {
-        if (!connectedPeers.current.has(user.peerId) && user.peerId !== peer.id) {
-          connectedPeers.current.add(user.peerId); // Track connected peers
-
-          const call = peer.call(user.peerId, localVideoRef.current.srcObject);
-          call.on("stream", (remoteStream) => {
-            addVideoStream(remoteStream, user.peerId);
-          });
+    navigator.mediaDevices
+      .getUserMedia({ video: true, audio: true })
+      .then((stream) => {
+        localStreamRef.current = stream; // Store stream reference
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
         }
-      });
-    });
+
+        peer.on("open", (id) => {
+          setPeerId(id);
+          socket.emit("join-room", { roomId, userName, peerId: id });
+        });
+
+        socket.on("user-joined", (users) => {
+          users.forEach((user) => {
+            if (!connectedPeers.current.has(user.peerId) && user.peerId !== peer.id) {
+              connectedPeers.current.add(user.peerId);
+
+              const call = peer.call(user.peerId, stream);
+              call.on("stream", (remoteStream) => {
+                addVideoStream(remoteStream, user.peerId);
+              });
+            }
+          });
+        });
+
+        peer.on("call", (call) => {
+          call.answer(stream);
+          call.on("stream", (remoteStream) => {
+            addVideoStream(remoteStream, call.peer);
+          });
+        });
+      })
+      .catch((err) => console.error("Error accessing media devices:", err));
 
     socket.on("user-left", (users) => {
       setUsers(users);
@@ -65,28 +82,24 @@ function Room() {
       if (videoToRemove) {
         videoToRemove.remove();
       }
-      connectedPeers.current.delete(peerId); // Remove disconnected peer
+      connectedPeers.current.delete(peerId);
     });
-
-    navigator.mediaDevices
-      .getUserMedia({ video: true, audio: true })
-      .then((stream) => {
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-        }
-
-        peer.on("call", (call) => {
-          call.answer(stream);
-          call.on("stream", (remoteStream) => {
-            addVideoStream(remoteStream, call.peer);
-          });
-        });
-      });
 
     return () => {
       socket.emit("leave-room", { roomId });
-      socket.off();
-      peer.disconnect();
+
+      socket.off("user-joined");
+      socket.off("user-left");
+      socket.off("user-disconnected");
+
+      if (peerInstance.current) {
+        peerInstance.current.disconnect();
+      }
+
+      // Stop media tracks
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
     };
   }, [roomId]);
 
@@ -109,7 +122,6 @@ function Room() {
       <ul
         style={{
           listStyleType: "none",
-         
           backgroundColor: "#23272a",
           borderRadius: "10px",
           padding: "10px",
@@ -130,7 +142,7 @@ function Room() {
           </li>
         ))}
       </ul>
-      
+
       {/* Video Container */}
       <div
         id="video-container"

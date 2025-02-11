@@ -6,6 +6,11 @@ import User from "../models/User.js";
 
 const router = express.Router();
 
+// Middleware to extract token
+const extractToken = (req) => {
+  return req.cookies?.token || req.headers.authorization?.split(" ")[1];
+};
+
 // Register User
 router.post("/register", async (req, res) => {
   const { name, email, password } = req.body;
@@ -14,7 +19,7 @@ router.post("/register", async (req, res) => {
     let user = await User.findOne({ email });
     if (user) return res.status(400).json({ message: "User already exists" });
 
-    const salt = await bcrypt.genSalt(12);
+    const salt = await bcrypt.genSalt(Number(process.env.SALT_ROUNDS) || 12);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     user = new User({ name, email, password: hashedPassword });
@@ -23,7 +28,7 @@ router.post("/register", async (req, res) => {
     res.json({ message: "User registered successfully" });
   } catch (error) {
     console.error("Register Error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: error.message || "Internal server error" });
   }
 });
 
@@ -39,11 +44,16 @@ router.post("/login", async (req, res) => {
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
-    // Send token in response instead of setting a cookie
-    res.json({ message: "Login successful", token, user });
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    res.json({ message: "Login successful", user });
   } catch (error) {
     console.error("Login Error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: error.message || "Internal server error" });
   }
 });
 
@@ -60,22 +70,23 @@ router.get(
       return res.status(401).json({ message: "Google authentication failed" });
     }
 
-    const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
+    const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
     });
 
-    // Redirect with token in URL params
-    res.redirect(`https://chatyzz.netlify.app/dashboard?token=${token}`);
+    res.redirect("https://chatyzz.netlify.app/dashboard");
   }
 );
 
 // Get User Info
 router.get("/me", async (req, res) => {
-  const token = req.query.token || req.headers.authorization?.split(" ")[1];
+  const token = extractToken(req);
 
-  if (!token) {
-    return res.status(401).json({ error: "No token provided" });
-  }
+  if (!token) return res.status(401).json({ message: "Unauthorized" });
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -87,8 +98,10 @@ router.get("/me", async (req, res) => {
   }
 });
 
-// Logout (No need to clear cookies now)
+// Logout
 router.get("/logout", (req, res) => {
+  req.logout?.(); // Ensure OAuth users are logged out
+  res.clearCookie("token", { httpOnly: true, secure: process.env.NODE_ENV === "production" });
   res.json({ message: "Logged out successfully" });
 });
 
