@@ -23,6 +23,11 @@ function Room() {
     video.autoplay = true;
     video.playsInline = true;
     video.setAttribute("data-peer-id", peerId);
+    video.style.borderRadius = "10px";
+    video.style.margin = "10px";
+    video.style.width = "250px";
+    video.style.height = "150px";
+    video.style.border = "2px solid #7289da";
 
     document.getElementById("video-container").appendChild(video);
   };
@@ -85,18 +90,95 @@ function Room() {
   }, [roomId]);
 
   return (
-    <div>
-      <h1>Room: {roomId}</h1>
-      <h2>Participants:</h2>
-      <ul>
+    <div
+      style={{
+        backgroundColor: "#2c2f33",
+        color: "white",
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "Arial, sans-serif",
+        padding: "20px",
+      }}
+    >
+      <h1 style={{ color: "#ffffff" }}>Room: {roomId}</h1>
+      <h2 style={{ color: "#ffffff" }}>Participants:</h2>
+      <ul
+        style={{
+          listStyleType: "none",
+        
+          backgroundColor: "#23272a",
+          borderRadius: "10px",
+          padding: "10px",
+          boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.2)",
+          width: "fit-content",
+        }}
+      >
         {users.map((user) => (
-          <li key={user.id}>{user.userName}</li>
+          <li
+            key={user.id}
+            style={{
+              padding: "8px",
+              borderBottom: "1px solid #7289da",
+              color: "#ffffff",
+            }}
+          >
+            {user.userName}
+          </li>
         ))}
       </ul>
-      <div id="video-container">
-        <video ref={localVideoRef} autoPlay playsInline muted></video>
+      
+      {/* Video Container */}
+      <div
+        id="video-container"
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "center",
+          alignItems: "center",
+          marginTop: "20px",
+          backgroundColor: "#23272a",
+          borderRadius: "10px",
+          padding: "10px",
+          boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.2)",
+        }}
+      >
+        <video
+          ref={localVideoRef}
+          autoPlay
+          playsInline
+          muted
+          style={{
+            borderRadius: "10px",
+            margin: "10px",
+            width: "250px",
+            height: "150px",
+            border: "2px solid #7289da",
+          }}
+        ></video>
       </div>
-      <button onClick={() => navigate("/")}>Leave Room</button>
+
+      {/* Leave Room Button */}
+      <button
+        onClick={() => navigate("/")}
+        style={{
+          backgroundColor: "#7289da",
+          color: "white",
+          border: "none",
+          padding: "10px 20px",
+          fontSize: "16px",
+          borderRadius: "5px",
+          cursor: "pointer",
+          transition: "0.3s ease",
+          marginTop: "20px",
+        }}
+        onMouseOver={(e) => (e.target.style.backgroundColor = "#5a6ea3")}
+        onMouseOut={(e) => (e.target.style.backgroundColor = "#7289da")}
+      >
+        Leave Room
+      </button>
     </div>
   );
 }
