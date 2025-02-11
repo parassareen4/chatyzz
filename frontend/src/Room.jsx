@@ -13,6 +13,17 @@ function Room() {
   const remoteVideoRef = useRef();
   const peerInstance = useRef(null);
 
+  const addVideoStream = (stream, peerId) => {
+    let video = document.createElement("video");
+    video.srcObject = stream;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.setAttribute("data-peer-id", peerId);
+  
+    document.getElementById("video-container").appendChild(video);
+  };
+  
+
   useEffect(() => {
     const userName = prompt("Enter your name:");
     const peer = new Peer(); // Initialize PeerJS
@@ -26,9 +37,16 @@ function Room() {
     
 
     socket.on("user-joined", (users) => {
-      setUsers(users);
-    });
-
+        users.forEach((user) => {
+          if (user.peerId !== peer.id) {
+            const call = peer.call(user.peerId, localVideoRef.current.srcObject);
+      
+            call.on("stream", (remoteStream) => {
+              addVideoStream(remoteStream, user.peerId); // Handles multiple streams
+            });
+          }
+        });
+      });
     socket.on("user-left", (users) => {
       setUsers(users);
     });
@@ -54,13 +72,13 @@ function Room() {
         });
 
         peer.on("call", (call) => {
-          call.answer(stream);
-          call.on("stream", (remoteStream) => {
-            if (remoteVideoRef.current) {
-              remoteVideoRef.current.srcObject = remoteStream;
-            }
+            call.answer(localVideoRef.current.srcObject);
+          
+            call.on("stream", (remoteStream) => {
+              addVideoStream(remoteStream, call.peer);
+            });
           });
-        });
+          
       });
 
     return () => {
