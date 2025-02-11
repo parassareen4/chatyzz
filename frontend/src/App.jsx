@@ -17,101 +17,14 @@ function App() {
   };
 
   return (
-    <div
-      style={{
-        backgroundColor: "#2c2f33",
-        color: "white",
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      <h1 style={{ color: "#ffffff", marginBottom: "20px" }}>Welcome to Chatyzz</h1>
-      
-      {/* Login Form */}
-      <form
-        onSubmit={handleLogin}
-        style={{
-          backgroundColor: "#23272a",
-          padding: "30px",
-          borderRadius: "10px",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.3)",
-        }}
-      >
-        <input
-          type="email"
-          placeholder="Email"
-          onChange={(e) => setEmail(e.target.value)}
-          style={{
-            padding: "12px",
-            margin: "10px",
-            width: "250px",
-            borderRadius: "5px",
-            border: "none",
-            backgroundColor: "#2c2f33",
-            color: "white",
-          }}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          onChange={(e) => setPassword(e.target.value)}
-          style={{
-            padding: "12px",
-            margin: "10px",
-            width: "250px",
-            borderRadius: "5px",
-            border: "none",
-            backgroundColor: "#2c2f33",
-            color: "white",
-          }}
-        />
-        <button
-          type="submit"
-          style={{
-            backgroundColor: "#7289da",
-            color: "white",
-            border: "none",
-            padding: "12px 20px",
-            fontSize: "16px",
-            borderRadius: "5px",
-            cursor: "pointer",
-            transition: "0.3s ease",
-            marginTop: "10px",
-          }}
-          onMouseOver={(e) => (e.target.style.backgroundColor = "#5a6ea3")}
-          onMouseOut={(e) => (e.target.style.backgroundColor = "#7289da")}
-        >
-          Login
-        </button>
+    <div>
+      <h1>Welcome to Chatyzz</h1>
+      <form onSubmit={handleLogin}>
+        <input type="email" placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
+        <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
+        <button type="submit">Login</button>
       </form>
-
-      {/* Google Login */}
-      <a href="https://chatyzz.onrender.com/auth/google">
-        <button
-          style={{
-            backgroundColor: "#ffffff",
-            color: "#23272a",
-            border: "none",
-            padding: "12px 20px",
-            fontSize: "16px",
-            borderRadius: "5px",
-            cursor: "pointer",
-            transition: "0.3s ease",
-            marginTop: "15px",
-          }}
-          onMouseOver={(e) => (e.target.style.backgroundColor = "#dddddd")}
-          onMouseOut={(e) => (e.target.style.backgroundColor = "#ffffff")}
-        >
-          Login with Google
-        </button>
-      </a>
+      <a href="https://chatyzz.onrender.com/auth/google"><button>Login with Google</button></a>
     </div>
   );
 }
