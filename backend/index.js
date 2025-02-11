@@ -26,9 +26,12 @@ const io = new Server(server, {
 
 app.use(express.json());
 app.use(cors({
-    origin: "https://chatyzz.netlify.app", // ✅ Allow only your frontend
-  credentials: true, // ✅ Allow cookies
-})); // ✅ Fixed cors('*') issue
+    origin: (origin, callback) => {
+      callback(null, origin || "*");
+    },
+    credentials: true,
+  }));
+  
 
 app.use(
     session({
