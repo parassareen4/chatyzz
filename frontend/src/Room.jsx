@@ -108,7 +108,7 @@ function Room() {
       <ul
         style={{
           listStyleType: "none",
-          padding: "0",
+          
           backgroundColor: "#23272a",
           borderRadius: "10px",
           padding: "10px",
