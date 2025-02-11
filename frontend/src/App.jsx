@@ -9,13 +9,12 @@ function App() {
     e.preventDefault();
     try {
       const res = await axios.post("https://chatyzz.onrender.com/auth/login", { email, password });
-      localStorage.setItem("token", res.data.token);
-      window.location.href = "/dashboard";
+      const token = res.data.token;
+      window.location.href = `/dashboard?token=${token}`; // Redirect with token in URL
     } catch (err) {
       alert("Login failed");
     }
   };
-
   return (
     <div
       style={{
