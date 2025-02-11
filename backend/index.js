@@ -12,8 +12,10 @@ import './config/passport.js';
 import session from 'express-session';
 import mongoose from 'mongoose';
 import router from './routes/authRoutes.js';
+import cookieParser from "cookie-parser";
 
 const app = express();
+app.use(cookieParser());
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
