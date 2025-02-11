@@ -12,23 +12,17 @@ function Room() {
   const [peerId, setPeerId] = useState("");
   const localVideoRef = useRef();
   const peerInstance = useRef(null);
-  const localStreamRef = useRef(null);
-  const connectedPeers = useRef(new Set()); // Prevent duplicate connections
+  const connectedPeers = useRef(new Set()); // Store connected peers to prevent duplicates
 
   const addVideoStream = (stream, peerId) => {
     let existingVideo = document.querySelector(`[data-peer-id="${peerId}"]`);
-    if (existingVideo) return;
+    if (existingVideo) return; // Prevent duplicate video elements
 
     let video = document.createElement("video");
     video.srcObject = stream;
     video.autoplay = true;
     video.playsInline = true;
     video.setAttribute("data-peer-id", peerId);
-    video.style.borderRadius = "10px";
-    video.style.margin = "10px";
-    video.style.width = "250px";
-    video.style.height = "150px";
-    video.style.border = "2px solid #7289da";
 
     document.getElementById("video-container").appendChild(video);
   };
@@ -38,40 +32,23 @@ function Room() {
     const peer = new Peer();
     peerInstance.current = peer;
 
-    navigator.mediaDevices
-      .getUserMedia({ video: true, audio: true })
-      .then((stream) => {
-        localStreamRef.current = stream; // Store stream reference
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-        }
+    peer.on("open", (id) => {
+      setPeerId(id);
+      socket.emit("join-room", { roomId, userName, peerId: id });
+    });
 
-        peer.on("open", (id) => {
-          setPeerId(id);
-          socket.emit("join-room", { roomId, userName, peerId: id });
-        });
+    socket.on("user-joined", (users) => {
+      users.forEach((user) => {
+        if (!connectedPeers.current.has(user.peerId) && user.peerId !== peer.id) {
+          connectedPeers.current.add(user.peerId); // Track connected peers
 
-        socket.on("user-joined", (users) => {
-          users.forEach((user) => {
-            if (!connectedPeers.current.has(user.peerId) && user.peerId !== peer.id) {
-              connectedPeers.current.add(user.peerId);
-
-              const call = peer.call(user.peerId, stream);
-              call.on("stream", (remoteStream) => {
-                addVideoStream(remoteStream, user.peerId);
-              });
-            }
-          });
-        });
-
-        peer.on("call", (call) => {
-          call.answer(stream);
+          const call = peer.call(user.peerId, localVideoRef.current.srcObject);
           call.on("stream", (remoteStream) => {
-            addVideoStream(remoteStream, call.peer);
+            addVideoStream(remoteStream, user.peerId);
           });
-        });
-      })
-      .catch((err) => console.error("Error accessing media devices:", err));
+        }
+      });
+    });
 
     socket.on("user-left", (users) => {
       setUsers(users);
@@ -82,116 +59,44 @@ function Room() {
       if (videoToRemove) {
         videoToRemove.remove();
       }
-      connectedPeers.current.delete(peerId);
+      connectedPeers.current.delete(peerId); // Remove disconnected peer
     });
+
+    navigator.mediaDevices
+      .getUserMedia({ video: true, audio: true })
+      .then((stream) => {
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+        }
+
+        peer.on("call", (call) => {
+          call.answer(stream);
+          call.on("stream", (remoteStream) => {
+            addVideoStream(remoteStream, call.peer);
+          });
+        });
+      });
 
     return () => {
       socket.emit("leave-room", { roomId });
-
-      socket.off("user-joined");
-      socket.off("user-left");
-      socket.off("user-disconnected");
-
-      if (peerInstance.current) {
-        peerInstance.current.disconnect();
-      }
-
-      // Stop media tracks
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((track) => track.stop());
-      }
+      socket.off();
+      peer.disconnect();
     };
   }, [roomId]);
 
   return (
-    <div
-      style={{
-        backgroundColor: "#2c2f33",
-        color: "white",
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "Arial, sans-serif",
-        padding: "20px",
-      }}
-    >
-      <h1 style={{ color: "#ffffff" }}>Room: {roomId}</h1>
-      <h2 style={{ color: "#ffffff" }}>Participants:</h2>
-      <ul
-        style={{
-          listStyleType: "none",
-          backgroundColor: "#23272a",
-          borderRadius: "10px",
-          padding: "10px",
-          boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.2)",
-          width: "fit-content",
-        }}
-      >
+    <div>
+      <h1>Room: {roomId}</h1>
+      <h2>Participants:</h2>
+      <ul>
         {users.map((user) => (
-          <li
-            key={user.id}
-            style={{
-              padding: "8px",
-              borderBottom: "1px solid #7289da",
-              color: "#ffffff",
-            }}
-          >
-            {user.userName}
-          </li>
+          <li key={user.id}>{user.userName}</li>
         ))}
       </ul>
-
-      {/* Video Container */}
-      <div
-        id="video-container"
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          justifyContent: "center",
-          alignItems: "center",
-          marginTop: "20px",
-          backgroundColor: "#23272a",
-          borderRadius: "10px",
-          padding: "10px",
-          boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.2)",
-        }}
-      >
-        <video
-          ref={localVideoRef}
-          autoPlay
-          playsInline
-          muted
-          style={{
-            borderRadius: "10px",
-            margin: "10px",
-            width: "250px",
-            height: "150px",
-            border: "2px solid #7289da",
-          }}
-        ></video>
+      <div id="video-container">
+        <video ref={localVideoRef} autoPlay playsInline muted></video>
       </div>
-
-      {/* Leave Room Button */}
-      <button
-        onClick={() => navigate("/")}
-        style={{
-          backgroundColor: "#7289da",
-          color: "white",
-          border: "none",
-          padding: "10px 20px",
-          fontSize: "16px",
-          borderRadius: "5px",
-          cursor: "pointer",
-          transition: "0.3s ease",
-          marginTop: "20px",
-        }}
-        onMouseOver={(e) => (e.target.style.backgroundColor = "#5a6ea3")}
-        onMouseOut={(e) => (e.target.style.backgroundColor = "#7289da")}
-      >
-        Leave Room
-      </button>
+      <button onClick={() => navigate("/")}>Leave Room</button>
     </div>
   );
 }
