@@ -6,8 +6,8 @@ import { v4 as uuidV4 } from "uuid";
 
 function Dashboard() {
   const [user, setUser] = useState(null);
-  const [roomId, setRoomId] = useState("");
   const navigate = useNavigate();
+  const [roomId, setRoomId] = useState("");
 
   const createRoom = () => {
     const newRoomId = uuidV4();
@@ -15,28 +15,32 @@ function Dashboard() {
   };
 
   const joinRoom = () => {
-    if (!roomId.trim()) {
-      alert("Please enter a valid Room ID");
-      return;
-    }
-    navigate(`/room/${roomId}`);
+    if (roomId) navigate(`/room/${roomId}`);
   };
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get("token");
+    const tokenFromURL = urlParams.get("token");
 
-    if (!token) {
-      navigate("/");
-      return;
+    if (tokenFromURL) {
+      localStorage.setItem("token", tokenFromURL);
+      window.history.replaceState({}, document.title, "/dashboard");
     }
 
     const fetchUser = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        navigate("/");
+        return;
+      }
+
       try {
-        const res = await axios.get(`https://chatyzz.onrender.com/auth/me?token=${token}`);
+        const res = await axios.get("https://chatyzz.onrender.com/auth/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setUser(res.data);
       } catch (err) {
-        console.error("Error fetching user:", err);
+        console.log("Error fetching user:", err);
         navigate("/");
       }
     };
@@ -45,46 +49,131 @@ function Dashboard() {
   }, [navigate]);
 
   const handleLogout = () => {
-    navigate("/");
+    localStorage.removeItem("token");
+    window.location.href = "/";
   };
 
   return (
-    <div style={{ backgroundColor: "#2c2f33", color: "white", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "Arial, sans-serif" }}>
-      <h1 style={{ color: "#ffffff" }}>Welcome to Chatyzz</h1>
-      {user ? (
-        <div style={{ backgroundColor: "#23272a", padding: "20px", borderRadius: "10px", textAlign: "center", boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.2)", marginBottom: "20px" }}>
-          <h2 style={{ color: "#ffffff" }}>Welcome, {user.name}</h2>
-          {user.avatar && <img src={user.avatar} alt="Profile" style={{ borderRadius: "50%", border: "3px solid #7289da", width: "80px", height: "80px", marginBottom: "10px" }} />}
-          <br />
-          <button onClick={handleLogout} style={{ backgroundColor: "#7289da", color: "white", border: "none", padding: "10px 20px", fontSize: "16px", borderRadius: "5px", cursor: "pointer", transition: "0.3s ease", marginTop: "10px" }}>
-            Logout
-          </button>
-        </div>
-      ) : (
-        <p>Loading...</p>
-      )}
+    <div style={styles.container}>
+      <h1 style={styles.title}>Dashboard</h1>
 
-      <div style={{ backgroundColor: "#23272a", padding: "20px", borderRadius: "10px", textAlign: "center", boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.2)", marginBottom: "20px" }}>
+      <div style={styles.card}>
+        <h1 style={styles.header}>Welcome to Chatyzz</h1>
         <Link to="/videocall">
-          <button style={{ backgroundColor: "#7289da", color: "white", border: "none", padding: "10px 20px", fontSize: "16px", borderRadius: "5px", cursor: "pointer", transition: "0.3s ease" }}>
-            Start Video Call
-          </button>
+          <button style={styles.button}>Start Video Call</button>
         </Link>
       </div>
 
-      <div style={{ backgroundColor: "#23272a", padding: "20px", borderRadius: "10px", textAlign: "center", boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.2)" }}>
-        <button onClick={createRoom} style={{ backgroundColor: "#7289da", color: "white", border: "none", padding: "10px 20px", fontSize: "16px", borderRadius: "5px", cursor: "pointer", transition: "0.3s ease", marginBottom: "10px" }}>
-          Create Room
-        </button>
-        <br />
-        <input type="text" placeholder="Enter Room ID" value={roomId} onChange={(e) => setRoomId(e.target.value)} style={{ backgroundColor: "#23272a", border: "2px solid #7289da", padding: "10px", color: "white", fontSize: "16px", borderRadius: "5px", width: "250px", margin: "10px 0", outline: "none" }} />
-        <br />
-        <button onClick={joinRoom} style={{ backgroundColor: "#7289da", color: "white", border: "none", padding: "10px 20px", fontSize: "16px", borderRadius: "5px", cursor: "pointer", transition: "0.3s ease" }}>
-          Join Room
-        </button>
+      <div style={styles.card}>
+        <h1 style={styles.header}>Create or Join a Room</h1>
+        <button style={styles.button} onClick={createRoom}>Create Room</button>
+        <br /><br />
+        <input
+          type="text"
+          placeholder="Enter Room ID"
+          value={roomId}
+          onChange={(e) => setRoomId(e.target.value)}
+          style={styles.input}
+        />
+        <button style={styles.button} onClick={joinRoom}>Join Room</button>
       </div>
+
+      {user ? (
+        <div style={styles.userProfile}>
+          <h2 style={styles.username}>Welcome, {user.name}</h2>
+          <img src={user.avatar} alt="Profile" style={styles.avatar} />
+          <button style={styles.logoutButton} onClick={handleLogout}>Logout</button>
+        </div>
+      ) : (
+        <p style={styles.loadingText}>Loading...</p>
+      )}
     </div>
   );
 }
+
+const styles = {
+  container: {
+    backgroundColor: "#2C2F33", // Discord dark theme
+    color: "#FFFFFF",
+    textAlign: "center",
+    minHeight: "100vh",
+    padding: "50px 20px",
+    fontFamily: "Arial, sans-serif",
+  },
+  title: {
+    fontSize: "32px",
+    fontWeight: "bold",
+    marginBottom: "20px",
+  },
+  card: {
+    backgroundColor: "#23272A",
+    padding: "20px",
+    borderRadius: "8px",
+    width: "90%",
+    maxWidth: "400px",
+    margin: "20px auto",
+    boxShadow: "0 4px 10px rgba(0, 0, 0, 0.3)",
+  },
+  header: {
+    fontSize: "24px",
+    marginBottom: "10px",
+  },
+  button: {
+    backgroundColor: "#7289DA", // Discord blue
+    color: "#FFFFFF",
+    padding: "10px 20px",
+    fontSize: "16px",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+    margin: "5px",
+    transition: "0.3s",
+  },
+  buttonHover: {
+    backgroundColor: "#5B6EAE",
+  },
+  input: {
+    width: "80%",
+    padding: "10px",
+    fontSize: "16px",
+    margin: "10px 0",
+    borderRadius: "5px",
+    border: "none",
+    textAlign: "center",
+  },
+  userProfile: {
+    marginTop: "20px",
+    padding: "20px",
+    backgroundColor: "#23272A",
+    borderRadius: "8px",
+    display: "inline-block",
+    textAlign: "center",
+    boxShadow: "0 4px 10px rgba(0, 0, 0, 0.3)",
+  },
+  username: {
+    fontSize: "20px",
+    marginBottom: "10px",
+  },
+  avatar: {
+    width: "100px",
+    height: "100px",
+    borderRadius: "50%",
+    marginBottom: "10px",
+  },
+  logoutButton: {
+    backgroundColor: "#D32F2F", // Red for logout
+    color: "#FFFFFF",
+    padding: "10px 20px",
+    fontSize: "16px",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+    transition: "0.3s",
+  },
+  loadingText: {
+    fontSize: "18px",
+    marginTop: "20px",
+  },
+};
 
 export default Dashboard;
