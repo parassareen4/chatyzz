@@ -45,16 +45,21 @@ function Room() {
     socket.on("user-joined", (users) => {
       users.forEach((user) => {
         if (!connectedPeers.current.has(user.peerId) && user.peerId !== peer.id) {
-          connectedPeers.current.add(user.peerId); // Track connected peers
-
-          const call = peer.call(user.peerId, localVideoRef.current.srcObject);
-          call.on("stream", (remoteStream) => {
-            addVideoStream(remoteStream, user.peerId);
-          });
+          connectedPeers.current.add(user.peerId);
+    
+          // Call new users and stream their video
+          setTimeout(() => {
+            const call = peer.call(user.peerId, localVideoRef.current.srcObject);
+            if (call) {
+              call.on("stream", (remoteStream) => {
+                addVideoStream(remoteStream, user.peerId);
+              });
+            }
+          }, 500); // Small delay to prevent race conditions
         }
       });
     });
-
+    
     socket.on("user-left", (users) => {
       setUsers(users);
     });
@@ -64,23 +69,29 @@ function Room() {
       if (videoToRemove) {
         videoToRemove.remove();
       }
-      connectedPeers.current.delete(peerId); // Remove disconnected peer
+      connectedPeers.current.delete(peerId);
+      
+      setUsers((prevUsers) => prevUsers.filter((user) => user.peerId !== peerId)); // Remove from state
     });
 
     navigator.mediaDevices
-      .getUserMedia({ video: true, audio: true })
-      .then((stream) => {
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-        }
+  .getUserMedia({ video: true, audio: true })
+  .then((stream) => {
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = stream;
+    }
 
-        peer.on("call", (call) => {
-          call.answer(stream);
-          call.on("stream", (remoteStream) => {
-            addVideoStream(remoteStream, call.peer);
-          });
-        });
+    peer.on("call", (call) => {
+      call.answer(stream);
+      call.on("stream", (remoteStream) => {
+        addVideoStream(remoteStream, call.peer);
       });
+    });
+  }).catch((err) => {
+    console.log(err);
+    alert("Error getting user media");
+    
+  });
 
     return () => {
       socket.emit("leave-room", { roomId });
@@ -159,6 +170,28 @@ function Room() {
           }}
         ></video>
       </div>
+      <button
+  onClick={() => {
+    navigator.clipboard.writeText(window.location.href);
+    alert("Room link copied!");
+  }}
+  style={{
+    backgroundColor: "#43b581",
+    color: "white",
+    border: "none",
+    padding: "10px 20px",
+    fontSize: "16px",
+    borderRadius: "5px",
+    cursor: "pointer",
+    transition: "0.3s ease",
+    marginTop: "10px",
+  }}
+  onMouseOver={(e) => (e.target.style.backgroundColor = "#3a9e6e")}
+  onMouseOut={(e) => (e.target.style.backgroundColor = "#43b581")}
+>
+  Copy Room Link
+</button>
+
 
       {/* Leave Room Button */}
       <button
