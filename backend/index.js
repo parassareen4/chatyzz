@@ -78,17 +78,26 @@ io.on("connection", (socket) => {
     });
 
     socket.on("disconnect", () => {
+        let disconnectedPeerId = null;
+    
         for (const roomId in rooms) {
-            rooms[roomId] = rooms[roomId].filter((user) => user.id !== socket.id);
-            io.to(roomId).emit("user-left", rooms[roomId]);
-
-            // ✅ Clean up empty rooms
-            if (rooms[roomId].length === 0) {
-                delete rooms[roomId];
+            const userIndex = rooms[roomId].findIndex((user) => user.id === socket.id);
+            if (userIndex !== -1) {
+                disconnectedPeerId = rooms[roomId][userIndex].peerId; // Get PeerID before removing
+                rooms[roomId].splice(userIndex, 1); // Remove user from room
+                
+                io.to(roomId).emit("user-disconnected", disconnectedPeerId); // ✅ Notify frontend
+    
+                if (rooms[roomId].length === 0) {
+                    delete rooms[roomId];
+                }
+                break; // Exit loop once found
             }
         }
-        console.log("User disconnected:", socket.id);
+    
+        console.log(`User disconnected: ${socket.id} (PeerID: ${disconnectedPeerId})`);
     });
+    
 });
 
 server.listen(5000, () => console.log("🚀 Server running on port 5000"));

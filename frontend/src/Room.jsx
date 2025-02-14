@@ -38,7 +38,10 @@ function Room() {
       setPeerId(id);
       socket.emit("join-room", { roomId, userName, peerId: id });
     });
-
+    socket.onAny((event, ...args) => {
+      console.log(`Received event: ${event}`, args);
+    });
+    
     socket.on("user-joined", (users) => {
       users.forEach((user) => {
         if (!connectedPeers.current.has(user.peerId) && user.peerId !== peer.id) {
@@ -57,35 +60,22 @@ function Room() {
     });
 
     socket.on("user-disconnected", (peerId) => {
-      console.log(`User disconnected: ${peerId}`); // Debugging log
+      console.log(`User disconnected event received for peerId: ${peerId}`); 
     
-      // 🔹 Find the video element
       const videoToRemove = document.querySelector(`[data-peer-id="${peerId}"]`);
-      
       if (videoToRemove) {
-        console.log(`Removing video for peerId: ${peerId}`); // Debugging log
-        videoToRemove.srcObject = null; // Stop video stream
+        console.log(`Removing video for peerId: ${peerId}`);
+        videoToRemove.srcObject = null;
         videoToRemove.remove();
       } else {
-        console.log(`Video element for peerId ${peerId} not found!`);
+        console.log(`Video element for ${peerId} not found!`);
       }
     
-      // 🔹 Close PeerJS connections
-      if (peerInstance.current) {
-        peerInstance.current.connections[peerId]?.forEach((conn) => {
-          conn.close();
-        });
-      }
-    
-      // 🔹 Remove peerId from connected peers
+      // Remove from connected peers
       connectedPeers.current.delete(peerId);
-    
-      // 🔹 Update the users state
       setUsers((prevUsers) => prevUsers.filter((user) => user.peerId !== peerId));
-    
-      // 🔹 Force re-render
-      setUsers((prev) => [...prev]); // Triggers component update
     });
+    
     
 
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
