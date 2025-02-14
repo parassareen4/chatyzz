@@ -54,9 +54,17 @@ function Room() {
     });
 
     socket.on("user-disconnected", (peerId) => {
-      document.querySelector(`[data-peer-id="${peerId}"]`)?.remove();
+      let videoToRemove = document.querySelector(`[data-peer-id="${peerId}"]`);
+      if (videoToRemove) {
+        videoToRemove.remove();
+      }
+    
+      // Remove peerId from connected peers
       connectedPeers.current.delete(peerId);
+    
+      // Update users list
       setUsers((prevUsers) => prevUsers.filter((user) => user.peerId !== peerId));
+    
     });
 
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
