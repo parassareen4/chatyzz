@@ -60,21 +60,22 @@ function Room() {
     });
 
     socket.on("user-disconnected", (peerId) => {
-      console.log(`User disconnected event received for peerId: ${peerId}`); 
+      console.log(`🔥 Received 'user-disconnected' for peerId: ${peerId}`); 
     
       const videoToRemove = document.querySelector(`[data-peer-id="${peerId}"]`);
       if (videoToRemove) {
-        console.log(`Removing video for peerId: ${peerId}`);
+        console.log(`✅ Removing video for PeerID: ${peerId}`);
         videoToRemove.srcObject = null;
         videoToRemove.remove();
       } else {
-        console.log(`Video element for ${peerId} not found!`);
+        console.log(`⚠️ Video element for ${peerId} not found!`);
       }
     
       // Remove from connected peers
       connectedPeers.current.delete(peerId);
       setUsers((prevUsers) => prevUsers.filter((user) => user.peerId !== peerId));
     });
+    
     
     
 

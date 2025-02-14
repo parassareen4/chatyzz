@@ -78,25 +78,31 @@ io.on("connection", (socket) => {
     });
 
     socket.on("disconnect", () => {
-        let disconnectedPeerId = null;
+        console.log(`User disconnected: ${socket.id}`);
     
         for (const roomId in rooms) {
+            console.log(`Checking room: ${roomId}`, rooms[roomId]);
+    
             const userIndex = rooms[roomId].findIndex((user) => user.id === socket.id);
             if (userIndex !== -1) {
-                disconnectedPeerId = rooms[roomId][userIndex].peerId; // Get PeerID before removing
+                const disconnectedPeerId = rooms[roomId][userIndex].peerId;
+                console.log(`Removing user with PeerID: ${disconnectedPeerId}`);
+    
                 rooms[roomId].splice(userIndex, 1); // Remove user from room
-                
+    
+                console.log(`Updated room ${roomId}:`, rooms[roomId]);
+    
                 io.to(roomId).emit("user-disconnected", disconnectedPeerId); // ✅ Notify frontend
     
                 if (rooms[roomId].length === 0) {
+                    console.log(`Deleting empty room: ${roomId}`);
                     delete rooms[roomId];
                 }
                 break; // Exit loop once found
             }
         }
-    
-        console.log(`User disconnected: ${socket.id} (PeerID: ${disconnectedPeerId})`);
     });
+    
     
 });
 
