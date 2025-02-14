@@ -13,6 +13,8 @@ function Room() {
   const localVideoRef = useRef();
   const peerInstance = useRef(null);
   const connectedPeers = useRef(new Set());
+  const activeCalls = useRef(new Map());
+
 
   const addVideoStream = (stream, peerId) => {
     let existingVideo = document.querySelector(`[data-peer-id="${peerId}"]`);
@@ -46,6 +48,7 @@ function Room() {
             if (call) {
               call.on("stream", (remoteStream) => {
                 addVideoStream(remoteStream, user.peerId);
+                activeCalls.current.set(user.peerId, call);  // Store call reference
               });
             }
           }
@@ -54,16 +57,24 @@ function Room() {
     });
 
     socket.on("user-disconnected", (peerId) => {
-      let videoToRemove = document.querySelector(`[data-peer-id="${peerId}"]`);
-      if (videoToRemove) {
-        videoToRemove.remove();
-      }
-    
-      // Remove peerId from connected peers
-      connectedPeers.current.delete(peerId);
-    
-      // Update users list
-      setUsers((prevUsers) => prevUsers.filter((user) => user.peerId !== peerId));
+      
+  // Remove video element
+  let videoToRemove = document.querySelector(`[data-peer-id="${peerId}"]`);
+  if (videoToRemove) {
+    videoToRemove.remove();
+  }
+
+  // Close PeerJS call connection
+  if (activeCalls.current.has(peerId)) {
+    activeCalls.current.get(peerId).close();
+    activeCalls.current.delete(peerId);
+  }
+
+  // Remove peerId from connected peers
+  connectedPeers.current.delete(peerId);
+
+  // Update users list
+  setUsers((prevUsers) => prevUsers.filter((user) => user.peerId !== peerId));
     
     });
 
@@ -86,12 +97,17 @@ function Room() {
 
     return () => {
       socket.emit("leave-room", { roomId });
-      socket.off();
 
   // Remove all event listeners
   socket.off("user-joined");
-  socket.off("user-left");
   socket.off("user-disconnected");
+
+  // Copy activeCalls.current to a local variable
+  const calls = activeCalls.current;
+
+  // Close all active calls safely
+  calls.forEach((call) => call.close());
+  calls.clear();
 
   // Disconnect PeerJS
   if (peerInstance.current) {
