@@ -17,20 +17,22 @@ function Room() {
 
 
   const handleLeave = () => {
-    // Emit event to inform other users
+    console.log("🚪 Leaving room...");
+  
+    // Emit event to inform others
     socket.emit("leave-room", { roomId });
   
     // Stop local video stream
     if (localVideoRef.current && localVideoRef.current.srcObject) {
-      let tracks = localVideoRef.current.srcObject.getTracks();
-      tracks.forEach((track) => track.stop()); // Stop all tracks
+      localVideoRef.current.srcObject.getTracks().forEach((track) => track.stop());
       localVideoRef.current.srcObject = null;
     }
   
-    // Remove the user's video element from the DOM
-    let localVideo = document.querySelector("video");
-    if (localVideo) {
-      localVideo.remove();
+    // Remove the user's video element
+    let videoElement = document.querySelector(`[data-peer-id="${peerId}"]`);
+    if (videoElement) {
+      videoElement.remove();
+      console.log(`✅ Removed local video element for PeerID: ${peerId}`);
     }
   
     // Close all active peer calls
@@ -42,11 +44,13 @@ function Room() {
       peerInstance.current.destroy();
     }
   
-    // Disconnect socket to prevent further updates
+    // Disconnect socket
     socket.disconnect();
   
-    // Navigate to home after cleanup
-    navigate("/");
+    // Wait 500ms to ensure cleanup happens before navigation
+    setTimeout(() => {
+      navigate("/");
+    }, 500);
   };
   
 

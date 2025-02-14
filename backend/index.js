@@ -62,20 +62,11 @@ io.on("connection", (socket) => {
         console.log(`${userName} joined room: ${roomId} with PeerID: ${peerId}`);
     });
 
-    socket.on("leave-room", ({ roomId }) => {
-        if (!roomId || !rooms[roomId]) return; // ✅ Prevents errors
-
-        rooms[roomId] = rooms[roomId].filter((user) => user.id !== socket.id);
-        socket.leave(roomId);
-        io.to(roomId).emit("user-left", rooms[roomId]);
-
-        // ✅ Remove empty rooms to free memory
-        if (rooms[roomId].length === 0) {
-            delete rooms[roomId];
-        }
-
-        console.log(`User left room: ${roomId}`);
-    });
+    socket.on("leave-room", ({ roomId, peerId }) => {
+        console.log(`📢 User with PeerID ${peerId} left room ${roomId}`);
+        socket.to(roomId).emit("user-disconnected", peerId);
+      });
+      
 
     socket.on("disconnect", () => {
         console.log(`User disconnected: ${socket.id}`);
