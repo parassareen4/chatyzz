@@ -87,7 +87,16 @@ function Room() {
     return () => {
       socket.emit("leave-room", { roomId });
       socket.off();
-      peerInstance.current?.destroy();
+
+  // Remove all event listeners
+  socket.off("user-joined");
+  socket.off("user-left");
+  socket.off("user-disconnected");
+
+  // Disconnect PeerJS
+  if (peerInstance.current) {
+    peerInstance.current.destroy();
+  }
     };
   }, [roomId]);
 
