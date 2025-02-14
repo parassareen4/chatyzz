@@ -16,6 +16,41 @@ function Room() {
   const activeCalls = useRef(new Map());
 
 
+  const handleLeave = () => {
+    // Emit event to inform other users
+    socket.emit("leave-room", { roomId });
+  
+    // Stop local video stream
+    if (localVideoRef.current && localVideoRef.current.srcObject) {
+      let tracks = localVideoRef.current.srcObject.getTracks();
+      tracks.forEach((track) => track.stop()); // Stop all tracks
+      localVideoRef.current.srcObject = null;
+    }
+  
+    // Remove the user's video element from the DOM
+    let localVideo = document.querySelector("video");
+    if (localVideo) {
+      localVideo.remove();
+    }
+  
+    // Close all active peer calls
+    activeCalls.current.forEach((call) => call.close());
+    activeCalls.current.clear();
+  
+    // Destroy PeerJS instance
+    if (peerInstance.current) {
+      peerInstance.current.destroy();
+    }
+  
+    // Disconnect socket to prevent further updates
+    socket.disconnect();
+  
+    // Navigate to home after cleanup
+    navigate("/");
+  };
+  
+
+
   const addVideoStream = (stream, peerId) => {
     let existingVideo = document.querySelector(`[data-peer-id="${peerId}"]`);
     if (existingVideo) return;
@@ -132,7 +167,7 @@ function Room() {
       <button onClick={() => { navigator.clipboard.writeText(window.location.href); alert("Room link copied!"); }} style={{ backgroundColor: "#43b581", color: "white", border: "none", padding: "10px 20px", fontSize: "16px", borderRadius: "5px", cursor: "pointer", transition: "0.3s ease", marginTop: "10px" }} onMouseOver={(e) => (e.target.style.backgroundColor = "#3a9e6e")} onMouseOut={(e) => (e.target.style.backgroundColor = "#43b581")}>
         Copy Room Link
       </button>
-      <button onClick={() => navigate("/")} style={{ backgroundColor: "#7289da", color: "white", border: "none", padding: "10px 20px", fontSize: "16px", borderRadius: "5px", cursor: "pointer", transition: "0.3s ease", marginTop: "20px" }} onMouseOver={(e) => (e.target.style.backgroundColor = "#5a6ea3")} onMouseOut={(e) => (e.target.style.backgroundColor = "#7289da")}>Leave Room</button>
+      <button onClick={handleLeave} style={{ backgroundColor: "#7289da", color: "white", border: "none", padding: "10px 20px", fontSize: "16px", borderRadius: "5px", cursor: "pointer", transition: "0.3s ease", marginTop: "20px" }} onMouseOver={(e) => (e.target.style.backgroundColor = "#5a6ea3")} onMouseOut={(e) => (e.target.style.backgroundColor = "#7289da")}>Leave Room</button>
     </div>
   );
 }
