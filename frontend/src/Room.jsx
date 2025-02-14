@@ -10,88 +10,71 @@ function Room() {
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [peerId, setPeerId] = useState("");
+  const [streams, setStreams] = useState([]);
   const localVideoRef = useRef();
   const peerInstance = useRef(null);
-  const connectedPeers = useRef(new Set()); // Store connected peers to prevent duplicates
-
-  const addVideoStream = (stream, peerId) => {
-    let existingVideo = document.querySelector(`[data-peer-id="${peerId}"]`);
-    if (existingVideo) return; // Prevent duplicate video elements
-
-    let video = document.createElement("video");
-    video.srcObject = stream;
-    video.autoplay = true;
-    video.playsInline = true;
-    video.setAttribute("data-peer-id", peerId);
-    video.style.borderRadius = "10px";
-    video.style.margin = "10px";
-    video.style.width = "250px";
-    video.style.height = "150px";
-    video.style.border = "2px solid #7289da";
-
-    document.getElementById("video-container").appendChild(video);
-  };
+  const connectedPeers = useRef(new Set());
 
   useEffect(() => {
     const userName = prompt("Enter your name:");
     const peer = new Peer();
     peerInstance.current = peer;
 
-    peer.on("open", (id) => {
-      setPeerId(id);
-      socket.emit("join-room", { roomId, userName, peerId: id });
-    });
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      .then((stream) => {
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+        }
 
-    socket.on("user-joined", (users) => {
-      users.forEach((user) => {
-        if (!connectedPeers.current.has(user.peerId) && user.peerId !== peer.id) {
-          connectedPeers.current.add(user.peerId);
-    
-          // Call new users and stream their video
-          setTimeout(() => {
-            const call = peer.call(user.peerId, localVideoRef.current.srcObject);
-            if (call) {
-              call.on("stream", (remoteStream) => {
-                addVideoStream(remoteStream, user.peerId);
+        peer.on("open", (id) => {
+          setPeerId(id);
+          socket.emit("join-room", { roomId, userName, peerId: id });
+        });
+
+        socket.on("user-joined", (users) => {
+          users.forEach((user) => {
+            if (!connectedPeers.current.has(user.peerId) && user.peerId !== peer.id) {
+              connectedPeers.current.add(user.peerId);
+              const call = peer.call(user.peerId, stream);
+              
+              call?.on("stream", (remoteStream) => {
+                setStreams((prevStreams) => {
+                  if (!prevStreams.some((s) => s.id === remoteStream.id)) {
+                    return [...prevStreams, { id: user.peerId, stream: remoteStream }];
+                  }
+                  return prevStreams;
+                });
               });
             }
-          }, 500); // Small delay to prevent race conditions
-        }
+          });
+        });
+
+        peer.on("call", (call) => {
+          call.answer(stream);
+          call.on("stream", (remoteStream) => {
+            setStreams((prevStreams) => {
+              if (!prevStreams.some((s) => s.id === remoteStream.id)) {
+                return [...prevStreams, { id: call.peer, stream: remoteStream }];
+              }
+              return prevStreams;
+            });
+          });
+        });
+      })
+      .catch((err) => {
+        console.error("Error getting user media:", err);
+        alert("Failed to access camera/microphone.");
       });
-    });
-    
+
     socket.on("user-left", (users) => {
       setUsers(users);
     });
 
     socket.on("user-disconnected", (peerId) => {
-      let videoToRemove = document.querySelector(`[data-peer-id="${peerId}"]`);
-      if (videoToRemove) {
-        videoToRemove.remove();
-      }
+      setStreams((prevStreams) => prevStreams.filter((s) => s.id !== peerId));
       connectedPeers.current.delete(peerId);
-      
-      setUsers((prevUsers) => prevUsers.filter((user) => user.peerId !== peerId)); // Remove from state
+      setUsers((prevUsers) => prevUsers.filter((user) => user.peerId !== peerId));
     });
-
-    navigator.mediaDevices
-  .getUserMedia({ video: true, audio: true })
-  .then((stream) => {
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = stream;
-    }
-
-    peer.on("call", (call) => {
-      call.answer(stream);
-      call.on("stream", (remoteStream) => {
-        addVideoStream(remoteStream, call.peer);
-      });
-    });
-  }).catch((err) => {
-    console.log(err);
-    alert("Error getting user media");
-    
-  });
 
     return () => {
       socket.emit("leave-room", { roomId });
@@ -101,117 +84,54 @@ function Room() {
   }, [roomId]);
 
   return (
-    <div
-      style={{
-        backgroundColor: "#2c2f33",
-        color: "white",
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "Arial, sans-serif",
-        padding: "20px",
-      }}
-    >
-      <h1 style={{ color: "#ffffff" }}>Room: {roomId}</h1>
-      <h2 style={{ color: "#ffffff" }}>Participants:</h2>
-      <ul
-        style={{
-          listStyleType: "none",
-        
-          backgroundColor: "#23272a",
-          borderRadius: "10px",
-          padding: "10px",
-          boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.2)",
-          width: "fit-content",
-        }}
-      >
+    <div style={{
+      backgroundColor: "#2c2f33", color: "white", minHeight: "100vh",
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      fontFamily: "Arial, sans-serif", padding: "20px"
+    }}>
+      <h1>Room: {roomId}</h1>
+      <h2>Participants:</h2>
+      <ul style={{ listStyleType: "none", backgroundColor: "#23272a", borderRadius: "10px",
+        padding: "10px", boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.2)", width: "fit-content" }}>
         {users.map((user) => (
-          <li
-            key={user.id}
-            style={{
-              padding: "8px",
-              borderBottom: "1px solid #7289da",
-              color: "#ffffff",
-            }}
-          >
-            {user.userName}
-          </li>
+          <li key={user.id} style={{ padding: "8px", borderBottom: "1px solid #7289da" }}>{user.userName}</li>
         ))}
       </ul>
-      
+
       {/* Video Container */}
-      <div
-        id="video-container"
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          justifyContent: "center",
-          alignItems: "center",
-          marginTop: "20px",
-          backgroundColor: "#23272a",
-          borderRadius: "10px",
-          padding: "10px",
-          boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.2)",
-        }}
-      >
-        <video
-          ref={localVideoRef}
-          autoPlay
-          playsInline
-          muted
-          style={{
-            borderRadius: "10px",
-            margin: "10px",
-            width: "250px",
-            height: "150px",
-            border: "2px solid #7289da",
-          }}
-        ></video>
+      <div id="video-container" style={{
+        display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center",
+        marginTop: "20px", backgroundColor: "#23272a", borderRadius: "10px", padding: "10px",
+        boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.2)"
+      }}>
+        <video ref={localVideoRef} autoPlay playsInline muted style={{
+          borderRadius: "10px", margin: "10px", width: "250px", height: "150px",
+          border: "2px solid #7289da"
+        }}></video>
+        {streams.map(({ id, stream }) => (
+          <video key={id} autoPlay playsInline style={{
+            borderRadius: "10px", margin: "10px", width: "250px", height: "150px",
+            border: "2px solid #7289da"
+          }} ref={(video) => {
+            if (video) video.srcObject = stream;
+          }}></video>
+        ))}
       </div>
-      <button
-  onClick={() => {
-    navigator.clipboard.writeText(window.location.href);
-    alert("Room link copied!");
-  }}
-  style={{
-    backgroundColor: "#43b581",
-    color: "white",
-    border: "none",
-    padding: "10px 20px",
-    fontSize: "16px",
-    borderRadius: "5px",
-    cursor: "pointer",
-    transition: "0.3s ease",
-    marginTop: "10px",
-  }}
-  onMouseOver={(e) => (e.target.style.backgroundColor = "#3a9e6e")}
-  onMouseOut={(e) => (e.target.style.backgroundColor = "#43b581")}
->
-  Copy Room Link
-</button>
 
+      <button onClick={() => {
+        navigator.clipboard.writeText(window.location.href);
+        alert("Room link copied!");
+      }} style={{ backgroundColor: "#43b581", color: "white", border: "none",
+        padding: "10px 20px", fontSize: "16px", borderRadius: "5px", cursor: "pointer",
+        transition: "0.3s ease", marginTop: "10px" }}
+        onMouseOver={(e) => (e.target.style.backgroundColor = "#3a9e6e")}
+        onMouseOut={(e) => (e.target.style.backgroundColor = "#43b581")}>Copy Room Link</button>
 
-      {/* Leave Room Button */}
-      <button
-        onClick={() => navigate("/")}
-        style={{
-          backgroundColor: "#7289da",
-          color: "white",
-          border: "none",
-          padding: "10px 20px",
-          fontSize: "16px",
-          borderRadius: "5px",
-          cursor: "pointer",
-          transition: "0.3s ease",
-          marginTop: "20px",
-        }}
+      <button onClick={() => navigate("/")} style={{ backgroundColor: "#7289da", color: "white",
+        border: "none", padding: "10px 20px", fontSize: "16px", borderRadius: "5px",
+        cursor: "pointer", transition: "0.3s ease", marginTop: "20px" }}
         onMouseOver={(e) => (e.target.style.backgroundColor = "#5a6ea3")}
-        onMouseOut={(e) => (e.target.style.backgroundColor = "#7289da")}
-      >
-        Leave Room
-      </button>
+        onMouseOut={(e) => (e.target.style.backgroundColor = "#7289da")}>Leave Room</button>
     </div>
   );
 }
